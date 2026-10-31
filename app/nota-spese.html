@@ -677,11 +677,11 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     const who = $('int-sel').value ? INTEST[$('int-sel').value] : 'Partita IVA';
     const per = period === 'all' ? 'tutte le spese' : period[0] === 'Y' ? 'anno ' + period.slice(1) : monthName(period);
     const lines = ['A: ' + COMMERCIALISTA, 'Oggetto: Nota spese ' + who + ' – ' + per + ' – Ing. Corrado Zambelli', '',
-      'Buongiorno,', '', 'vi invio la nota spese della mia ' + (who === 'Partita IVA' ? 'partita IVA' : who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
+      'Buongiorno,', '', 'ti invio la nota spese della mia ' + (who === 'Partita IVA' ? 'partita IVA' : who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
     CATS.filter(c => by[c.id]).forEach(c => lines.push('- ' + c.label + ': ' + fmt(by[c.id].t) + ' (IVA ' + fmt(by[c.id].i) + ', ' + by[c.id].n + (by[c.id].n === 1 ? ' documento)' : ' documenti)')));
     lines.push('', 'Totale: ' + fmt(T.t) + ' · IVA ' + fmt(T.i) + ' · imponibile ' + fmt(T.t - T.i));
     if (zero.length || noric.length) lines.push('', 'Da completare: ' + [zero.length && zero.length + ' importi mancanti', noric.length && noric.length + ' ricevute mancanti'].filter(Boolean).join(', ') + '.');
-    lines.push('', 'Nel file CSV allegato trovate il dettaglio riga per riga. Le fatture elettroniche sono nel cassetto fiscale; le altre ricevute sono disponibili su richiesta.',
+    lines.push('', 'Nel file CSV allegato trovi il dettaglio riga per riga. Le fatture elettroniche sono nel cassetto fiscale; le altre ricevute sono disponibili su richiesta.',
       '', 'Resto a disposizione per qualsiasi chiarimento.', '', 'Cordiali saluti', '', 'Ing. Corrado Zambelli', 'Via Torquato Tasso, 50 – 24121 Bergamo', 'Tel. 335 283574');
     $('r-text').value = lines.join('\n');
     const nInv = rows.filter(s => s.stato === 'inviata').length;
