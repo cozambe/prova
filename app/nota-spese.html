@@ -310,6 +310,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
     {id:'consulenze', label:'Commercialista e consulenze', ded:100},
     {id:'altro', label:'Altro', ded:100},
   ];
+  const COMMERCIALISTA = 'mascia@studioagosti.it';
   const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', personale:'Personale'};
   const STATI = {da_verificare:'Da verificare', registrata:'Registrata', inviata:'Inviata'};
   const catOf = id => CATS.find(c => c.id === id) || CATS[CATS.length-1];
@@ -672,11 +673,16 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     const bodyD = td.createTBody();
     rows.forEach(s => { const tr = row(bodyD, [s.data ? new Date(s.data+'T12:00').toLocaleDateString('it-IT') : '—', s.fornitore || '—', s.descrizione || '', fmt(s.totale), fmt(s.iva), s.ricevutaId ? 'foto' : s.emailLink ? 'Gmail' : 'mancante', STATI[s.stato] || ''], ['','w','w','n','n','','']); if (!(+s.totale)) tr.className = 'zero'; });
     // testo email
-    const lines = ['Buongiorno,', '', 'in allegato la nota spese di ' + periodLabel().replace(' · ', ' (') + ').', '', 'Riepilogo per categoria:'];
+    // Testo standard per lo studio (lo stesso usato dalla bozza automatica del 10 del mese).
+    const who = $('int-sel').value ? INTEST[$('int-sel').value] : 'Partita IVA';
+    const per = period === 'all' ? 'tutte le spese' : period[0] === 'Y' ? 'anno ' + period.slice(1) : monthName(period);
+    const lines = ['A: ' + COMMERCIALISTA, 'Oggetto: Nota spese ' + who + ' – ' + per + ' – Ing. Corrado Zambelli', '',
+      'Buongiorno,', '', 'vi invio la nota spese della mia ' + (who === 'Partita IVA' ? 'partita IVA' : who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
     CATS.filter(c => by[c.id]).forEach(c => lines.push('- ' + c.label + ': ' + fmt(by[c.id].t) + ' (IVA ' + fmt(by[c.id].i) + ', ' + by[c.id].n + (by[c.id].n === 1 ? ' documento)' : ' documenti)')));
     lines.push('', 'Totale: ' + fmt(T.t) + ' · IVA ' + fmt(T.i) + ' · imponibile ' + fmt(T.t - T.i));
     if (zero.length || noric.length) lines.push('', 'Da completare: ' + [zero.length && zero.length + ' importi mancanti', noric.length && noric.length + ' ricevute mancanti'].filter(Boolean).join(', ') + '.');
-    lines.push('', 'Il dettaglio riga per riga è nel file CSV allegato.', '', 'Cordiali saluti', 'Ing. Corrado Zambelli');
+    lines.push('', 'Nel file CSV allegato trovate il dettaglio riga per riga. Le fatture elettroniche sono nel cassetto fiscale; le altre ricevute sono disponibili su richiesta.',
+      '', 'Resto a disposizione per qualsiasi chiarimento.', '', 'Cordiali saluti', '', 'Ing. Corrado Zambelli', 'Via Torquato Tasso, 50 – 24121 Bergamo', 'Tel. 335 283574');
     $('r-text').value = lines.join('\n');
     const nInv = rows.filter(s => s.stato === 'inviata').length;
     $('r-close').disabled = !rows.length || nInv === rows.length;
