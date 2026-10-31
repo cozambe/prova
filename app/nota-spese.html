@@ -62,6 +62,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
 .filters select,.filters input{padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);font-size:.88rem;max-width:100%}
 
 .list{display:flex;flex-direction:column}
+.row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .row{display:grid;grid-template-columns:78px minmax(0,1fr) auto auto;gap:4px 14px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);cursor:pointer;text-align:left;background:none;border-left:0;border-right:0;border-top:0;width:100%}
 .row:hover{background:var(--sunk)}
 .row:last-child{border-bottom:0}
@@ -82,6 +83,14 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
 .pill.noric{background:var(--bad-soft);color:var(--bad)}
 .pill.int-srl{background:var(--accent-soft);color:var(--ink)}
 .pill.int-personale{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.pill.int-piva{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+select.pill{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid transparent;cursor:pointer;padding:3px 20px 3px 9px;font-family:inherit;line-height:1.3;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 10px) 52%,calc(100% - 6px) 52%;background-size:4px 4px,4px 4px;background-repeat:no-repeat}
+select.pill:hover{border-color:currentColor}
+select.pill option{color:var(--ink);background:var(--surface)}
+.amt-in{width:96px;padding:5px 8px;border:1px dashed var(--bad);border-radius:6px;background:var(--bad-soft);color:var(--ink);font-family:var(--f-mono);text-align:right;font-size:.88rem}
+.amt-in::placeholder{color:var(--bad)}
 
 .empty{padding:28px 16px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
 .empty b{color:var(--ink)}
@@ -377,8 +386,22 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
   }
   function emptyEl(t, s){ const d = document.createElement('div'); d.className = 'empty'; const b = document.createElement('b'); b.textContent = t; const sp = document.createElement('span'); sp.textContent = s; d.append(b, sp); return d; }
   function pill(cls, text){ const p = document.createElement('span'); p.className = 'pill ' + cls; p.textContent = text; return p; }
+  // Etichette modificabili direttamente dall'elenco, senza aprire la scheda.
+  function quickSave(s, patch, msg){
+    if (!db) { toast('Archivio non raggiungibile'); return; }
+    db.collection('spese').doc(s.id).update({...patch, updatedAt: new Date().toISOString()}).then(() => msg && toast(msg)).catch(dbErr);
+  }
+  function pillSelect(cls, value, options, label, onChange){
+    const sel = document.createElement('select'); sel.className = 'pill ' + cls(value); sel.setAttribute('aria-label', label);
+    Object.entries(options).forEach(([k, v]) => sel.add(new Option(v, k)));
+    sel.value = value;
+    sel.addEventListener('click', e => e.stopPropagation());
+    sel.addEventListener('keydown', e => e.stopPropagation());
+    sel.addEventListener('change', () => { sel.className = 'pill ' + cls(sel.value); onChange(sel.value); });
+    return sel;
+  }
   function rowEl(s){
-    const b = document.createElement('button'); b.className = 'row'; b.type = 'button';
+    const b = document.createElement('div'); b.className = 'row'; b.tabIndex = 0; b.setAttribute('role', 'button');
     const d = document.createElement('span'); d.className = 'd';
     d.textContent = s.data ? new Date(s.data + 'T12:00').toLocaleDateString('it-IT',{day:'2-digit',month:'short'}) : '—';
     const who = document.createElement('span'); who.className = 'who';
@@ -386,15 +409,27 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
     const w2 = document.createElement('span'); w2.textContent = [catOf(s.categoria).label, s.descrizione].filter(Boolean).join(' · ');
     who.append(w1, w2);
     const tags = document.createElement('span'); tags.className = 'tags';
-    if (s.intestatario && s.intestatario !== 'piva') tags.append(pill('int-' + s.intestatario, INTEST[s.intestatario]));
-    tags.append(pill(s.stato || 'da_verificare', STATI[s.stato] || STATI.da_verificare));
+    tags.append(pillSelect(v => 'int-' + v, s.intestatario || 'piva', INTEST, 'Intestatario',
+      v => quickSave(s, {intestatario: v, ...(v === 'personale' ? {deducibile: 0} : (s.intestatario === 'personale' ? {deducibile: catOf(s.categoria).ded} : {}))}, 'Intestatario: ' + INTEST[v])));
+    tags.append(pillSelect(v => v, s.stato || 'da_verificare', STATI, 'Stato', v => quickSave(s, {stato: v}, 'Stato: ' + STATI[v])));
     if (s.fonte === 'email') tags.append(pill('src','da email'));
     if (!s.ricevutaId && !s.emailLink && s.tipo !== 'nessuno') tags.append(pill('noric','senza ricevuta'));
     const amt = document.createElement('span'); amt.className = 'amt';
-    amt.textContent = fmt(s.totale);
-    if (+s.iva) { const sm = document.createElement('small'); sm.textContent = 'IVA ' + fmt(s.iva); amt.append(sm); }
+    if (!(+s.totale) && (s.stato || 'da_verificare') === 'da_verificare') {
+      const inp = document.createElement('input'); inp.className = 'amt-in'; inp.inputMode = 'decimal'; inp.placeholder = 'importo €';
+      inp.setAttribute('aria-label', 'Importo di ' + (s.fornitore || 'questa spesa'));
+      inp.addEventListener('click', e => e.stopPropagation());
+      const commit = () => { const n = parseNum(inp.value); if (n) quickSave(s, {totale: n}, 'Importo salvato: ' + fmt(n)); };
+      inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') inp.blur(); });
+      inp.addEventListener('blur', commit);
+      amt.append(inp);
+    } else {
+      amt.textContent = fmt(s.totale);
+      if (+s.iva) { const sm = document.createElement('small'); sm.textContent = 'IVA ' + fmt(s.iva); amt.append(sm); }
+    }
     b.append(d, who, tags, amt);
     b.addEventListener('click', () => openDrawer(s));
+    b.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === b) { e.preventDefault(); openDrawer(s); } });
     return b;
   }
 
@@ -467,7 +502,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
   $('d-save').addEventListener('click', async () => {
     if (!db) { status('err','Non riesco a salvare: apri la pagina da claude.ai con il tuo account.'); return; }
     const fornitore = $('f-forn').value.trim(), totale = parseNum($('f-tot').value);
-    if (!fornitore || !totale) { status('err','Inserisci almeno fornitore e totale.'); return; }
+    if (!fornitore) { status('err','Inserisci il fornitore.'); return; }
     const rec = {
       data: $('f-data').value || today(), intestatario: $('f-int').value, categoria: $('f-cat').value, fornitore,
       descrizione: $('f-descr').value.trim(), totale, iva: parseNum($('f-iva').value),
@@ -615,7 +650,7 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     // controlli
     const ck = $('r-checks'); ck.innerHTML = '';
     const add = (cls, t) => { const d = document.createElement('div'); d.className = 'rep-check ' + cls; d.textContent = t; ck.append(d); };
-    const zero = rows.filter(s => !(+s.totale)), chk = rows.filter(s => s.stato === 'da_verificare'), noric = rows.filter(s => !s.ricevutaId && !s.emailLink && s.tipo !== 'nessuno');
+    const zero = rows.filter(s => !(+s.totale) && s.stato === 'da_verificare'), chk = rows.filter(s => s.stato === 'da_verificare'), noric = rows.filter(s => !s.ricevutaId && !s.emailLink && s.tipo !== 'nessuno');
     const mixed = !$('int-sel').value && new Set(rows.map(s => s.intestatario || 'piva')).size > 1;
     if (!rows.length) add('warn', 'Nessuna spesa in questo periodo.');
     if (mixed) add('warn', 'Il report mescola Partita IVA, Srl e spese personali: scegli un intestatario in alto prima di inviarlo.');
