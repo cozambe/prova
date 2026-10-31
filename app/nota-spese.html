@@ -282,19 +282,21 @@ select.pill option{color:var(--ink);background:var(--surface)}
     <div class="tbl-wrap"><table class="tbl" id="r-det"></table></div>
     <h3 class="rep-h3">Testo per l’email</h3>
     <textarea class="rep-text" id="r-text" aria-label="Testo per l’email al commercialista"></textarea>
-    <span class="help" style="font-size:.78rem;color:var(--muted)">Copia il testo nell’email e allega il CSV. Le ricevute sono nell’app (foto) e in Gmail con l’etichetta PIVA-Spese.</span>
+    <span class="help" style="font-size:.78rem;color:var(--muted)">Copia il testo nell’email e allega CSV e PDF. Il PDF contiene il riepilogo e, in coda, le foto degli scontrini e le ricevute allegate, numerate come nel dettaglio.</span>
   </div>
   <div class="drawer-f">
     <button class="btn" id="r-reopen" type="button" hidden>Riapri il mese</button>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
       <button class="btn" id="r-copy" type="button">Copia testo</button>
       <button class="btn" id="r-csv" type="button">Scarica CSV</button>
+      <button class="btn" id="r-pdf" type="button">Scarica PDF</button>
       <button class="btn primary" id="r-close" type="button">Segna come inviato</button>
     </div>
   </div>
 </aside>
 <div class="toast" id="toast" hidden></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 (() => {
   const CATS = [
@@ -641,6 +643,114 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
   }
   $('b-csv').addEventListener('click', () => saveCsv(filtered().sort((a,b)=>(a.data||'').localeCompare(b.data||''))));
   $('r-csv').addEventListener('click', () => saveCsv(scope()));
+
+  // ---------- PDF: riepilogo + ricevute in coda ----------
+  async function buildPdf(rows){
+    const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica), bold = await doc.embedFont(StandardFonts.HelveticaBold);
+    const W = 595.28, H = 841.89, M = 48, ink = rgb(0.09,0.14,0.18), mute = rgb(0.36,0.41,0.46), line = rgb(0.8,0.84,0.87), acc = rgb(0.12,0.37,0.55);
+    const euro = n => fmt(n).replace(/ /g, ' ');
+    // Helvetica standard copre solo WinAnsi: tolgo i diacritici che non conosce (č → c).
+    const safe = (t, f = font) => Array.from(String(t ?? '').replace(/\s+/g, ' ')).map(ch => {
+      try { f.widthOfTextAtSize(ch, 10); return ch; } catch {}
+      const b = ch.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      try { f.widthOfTextAtSize(b, 10); return b; } catch { return '?'; }
+    }).join('');
+    const fit = (t, f, size, w) => { t = safe(t, f); if (f.widthOfTextAtSize(t, size) <= w) return t; while (t.length > 1 && f.widthOfTextAtSize(t + '…', size) > w) t = t.slice(0, -1); return t + '…'; };
+    let page, y;
+    const newPage = () => { page = doc.addPage([W, H]); y = H - M; };
+    const text = (t, x, size = 10, f = font, color = ink, w = W - M - x) => page.drawText(fit(t, f, size, w), {x, y, size, font: f, color});
+    const right = (t, xr, size = 10, f = font, color = ink) => { const s2 = safe(t, f); page.drawText(s2, {x: xr - f.widthOfTextAtSize(s2, size), y, size, font: f, color}); };
+    const rule = () => page.drawLine({start:{x:M,y:y+10}, end:{x:W-M,y:y+10}, thickness:0.5, color:line});
+    const need = h => { if (y - h < M) newPage(); };
+
+    // allegati numerati nell'ordine delle spese
+    let k = 0; const attach = rows.map(s => s.ricevutaId ? ++k : null);
+
+    newPage();
+    const who = $('int-sel').value ? INTEST[$('int-sel').value] : 'Tutti gli intestatari';
+    const per = period === 'all' ? 'Tutte le spese' : period[0] === 'Y' ? 'Anno ' + period.slice(1) : monthName(period);
+    text('NOTA SPESE · ' + who.toUpperCase(), M, 9, bold, acc); y -= 26;
+    text(per.charAt(0).toUpperCase() + per.slice(1), M, 22, bold); y -= 20;
+    text('Ing. Corrado Zambelli · Via Torquato Tasso, 50 – 24121 Bergamo · generato il ' + new Date().toLocaleDateString('it-IT'), M, 9, font, mute); y -= 34;
+
+    const T = rows.reduce((a, s) => ({t: a.t + (+s.totale||0), i: a.i + (+s.iva||0)}), {t:0, i:0});
+    const tiles = [['Totale', euro(T.t)], ['IVA', euro(T.i)], ['Imponibile', euro(T.t - T.i)], ['Documenti', String(rows.length)]];
+    const tw = (W - 2*M) / 4;
+    tiles.forEach(([l, v], i) => { const x = M + i*tw; page.drawText(safe(l.toUpperCase()), {x, y, size: 8, font: bold, color: mute}); page.drawText(safe(v), {x, y: y - 18, size: 14, font: bold, color: ink}); });
+    y -= 52;
+
+    // riepilogo per categoria
+    text('Riepilogo per categoria', M, 12, bold); y -= 18;
+    const cx = {n: 330, t: 420, i: 485, d: W - M};
+    text('CATEGORIA', M, 8, bold, mute); right('N.', cx.n, 8, bold, mute); right('TOTALE', cx.t, 8, bold, mute); right('IVA', cx.i, 8, bold, mute); right('DEDUCIBILE', cx.d, 8, bold, mute); y -= 14; rule();
+    const by = {};
+    rows.forEach(s => { const c = s.categoria || 'altro'; (by[c] ||= {n:0,t:0,i:0,d:0}); by[c].n++; by[c].t += +s.totale||0; by[c].i += +s.iva||0; by[c].d += (+s.totale||0) * ((s.deducibile ?? catOf(c).ded)/100); });
+    let D = 0;
+    CATS.filter(c => by[c.id]).forEach(c => { const v = by[c.id]; D += v.d; need(16); text(c.label, M, 10, font, ink, cx.n - M - 30); right(String(v.n), cx.n); right(euro(v.t), cx.t); right(euro(v.i), cx.i); right(euro(v.d), cx.d); y -= 15; rule(); });
+    text('Totale', M, 10, bold); right(String(rows.length), cx.n, 10, bold); right(euro(T.t), cx.t, 10, bold); right(euro(T.i), cx.i, 10, bold); right(euro(D), cx.d, 10, bold); y -= 30;
+
+    // dettaglio
+    need(60); text('Dettaglio spese', M, 12, bold); y -= 18;
+    const dx = {d: M, f: M + 58, t: 440, i: 495, a: W - M};
+    const head = () => { text('DATA', dx.d, 8, bold, mute); text('FORNITORE · DESCRIZIONE', dx.f, 8, bold, mute); right('TOTALE', dx.t, 8, bold, mute); right('IVA', dx.i, 8, bold, mute); right('RICEVUTA', dx.a, 8, bold, mute); y -= 14; rule(); };
+    head();
+    rows.forEach((s, idx) => {
+      if (y - 28 < M) { newPage(); head(); }
+      text(s.data ? new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : '—', dx.d, 9);
+      text(s.fornitore || '—', dx.f, 9.5, bold, ink, dx.t - dx.f - 70);
+      right(euro(s.totale), dx.t, 9.5); right(euro(s.iva), dx.i, 9, font, mute);
+      right(attach[idx] ? 'All. ' + attach[idx] : s.emailLink ? 'email' : 'mancante', dx.a, 9, attach[idx] ? bold : font, attach[idx] ? acc : mute);
+      y -= 11; text([catOf(s.categoria).label, s.descrizione].filter(Boolean).join(' · '), dx.f, 8, font, mute, dx.t - dx.f - 70); y -= 14; rule();
+    });
+    y -= 8; need(30);
+    text('Le spese con ricevuta "email" hanno la ricevuta solo nel corpo dell’email (es. soste EasyPark). Gli allegati seguono in ordine.', M, 8, font, mute);
+
+    // allegati
+    for (let idx = 0; idx < rows.length; idx++) {
+      const s = rows[idx], n = attach[idx]; if (!n) continue;
+      const caption = 'Allegato ' + n + ' · ' + (s.data ? new Date(s.data + 'T12:00').toLocaleDateString('it-IT') : '') + ' · ' + (s.fornitore || '') + ' · ' + euro(s.totale);
+      const stamp = p => { const {width, height} = p.getSize(); p.drawRectangle({x: 0, y: height - 18, width, height: 18, color: rgb(1,1,1), opacity: 0.85}); p.drawText(fit(caption, bold, 8, width - 24), {x: 12, y: height - 12, size: 8, font: bold, color: acc}); };
+      try {
+        const res = await fetch(s.ricevutaUrl || ('/_blob/' + s.ricevutaId)); if (!res.ok) throw new Error(res.status);
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+        if (isPdf) {
+          const src = await PDFDocument.load(bytes, {ignoreEncryption: true});
+          const pages = await doc.copyPages(src, src.getPageIndices());
+          pages.forEach(p => { doc.addPage(p); stamp(p); });
+        } else {
+          let img;
+          if (bytes[0] === 0x89 && bytes[1] === 0x50) img = await doc.embedPng(bytes);
+          else if (bytes[0] === 0xFF && bytes[1] === 0xD8) img = await doc.embedJpg(bytes);
+          else { // altri formati (webp, heic…): passo dal canvas
+            const bmp = await createImageBitmap(new Blob([bytes])); const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; c.getContext('2d').drawImage(bmp, 0, 0);
+            img = await doc.embedJpg(new Uint8Array(await (await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85))).arrayBuffer()));
+          }
+          const p = doc.addPage([W, H]); const k2 = Math.min((W - 2*M) / img.width, (H - 2*M - 10) / img.height, 1.5);
+          p.drawImage(img, {x: (W - img.width*k2)/2, y: (H - 18 - img.height*k2)/2, width: img.width*k2, height: img.height*k2}); stamp(p);
+        }
+      } catch (e) {
+        newPage(); stamp(page); text('Allegato ' + n + ' non disponibile: ' + (s.ricevutaNome || 'ricevuta') + '. Aprilo dall’app.', M, 11, font, mute);
+      }
+    }
+    return await doc.save();
+  }
+  $('r-pdf').addEventListener('click', async e => {
+    const b = e.currentTarget, rows = scope();
+    if (!rows.length) { toast('Nessuna spesa in questo periodo'); return; }
+    if (!window.PDFLib) { toast('Generatore PDF non caricato: ricarica la pagina'); return; }
+    if (!downloads) { toast('Download non disponibile in questa vista'); return; }
+    b.disabled = true; const label = b.textContent; b.innerHTML = '<span class="spin"></span> Preparo il PDF…';
+    try {
+      const bytes = await buildPdf(rows);
+      const who = $('int-sel').value ? '-' + $('int-sel').value : '';
+      const name = 'nota-spese-' + (period === 'all' ? 'tutte' : period.replace('Y','')) + who + '.pdf';
+      await downloads.save({filename: name, data: new Blob([bytes], {type: 'application/pdf'})}); toast('PDF pronto: ' + name);
+    } catch (err) { if (err?.code !== 'declined') toast('PDF non riuscito: ' + (err?.message || err?.code || 'errore')); }
+    finally { b.disabled = false; b.textContent = label; }
+  });
 
   // ---------- report ----------
   function cell(tr, text, cls){ const td = document.createElement(tr.parentNode && tr.parentNode.tagName === 'THEAD' ? 'th' : 'td'); td.textContent = text; if (cls) td.className = cls; tr.append(td); return td; }

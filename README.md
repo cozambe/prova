@@ -6,9 +6,9 @@ Strumenti per gestire la nota spese della partita IVA.
 
 | Cosa | Dove | Come funziona |
 |---|---|---|
-| App nota spese | `app/nota-spese.html`, pubblicata come artifact privato su claude.ai | Registro spese con database condiviso, report mensile per il commercialista (riepilogo per categoria, controlli, testo email), chiusura e riapertura del mese, foto degli scontrini (Claude legge data, fornitore, totale e IVA), note con scadenza, chiusura del mese, export CSV (separatore `;`, decimali con virgola) |
+| App nota spese | `app/nota-spese.html`, pubblicata come artifact privato su claude.ai | Registro spese con database condiviso, report mensile per il commercialista (riepilogo per categoria, controlli, testo email), chiusura e riapertura del mese, PDF con riepilogo e ricevute in coda, foto degli scontrini (Claude legge data, fornitore, totale e IVA), note con scadenza, chiusura del mese, export CSV (separatore `;`, decimali con virgola) |
 | Scansione Gmail | Attività programmata "Scansione Gmail spese PIVA", ogni lunedì alle 07:43 (Europe/Rome) | Cerca ricevute e fatture degli ultimi 8 giorni, le registra come "da verificare" assegnando l'intestatario (PIVA, Srl o personale), con link all'email, ed etichetta i thread `PIVA-Spese`. Le soste EasyPark ("Dettaglio sosta") diventano una spesa ciascuna |
-| Bozza per lo studio | Attività programmata "Bozza nota spese per lo studio Agosti", il 10 di ogni mese alle 08:47 | Crea in Gmail (senza inviarla) l'email a mascia@studioagosti.it con il riepilogo della partita IVA del mese precedente e il CSV allegato |
+| Bozza per lo studio | Attività programmata "Bozza nota spese per lo studio Agosti", il 10 di ogni mese alle 08:47 | Crea in Gmail (senza inviarla) l'email a mascia@studioagosti.it con il riepilogo della partita IVA del mese precedente, il CSV e il PDF con le ricevute allegati |
 | Promemoria preparazione | Google Calendar, il 5 di ogni mese alle 9:00 | Ricorda di sistemare le spese prima della bozza del 10 |
 | Promemoria | Google Calendar, "Chiusura mensile nota spese PIVA" | Ultimo giorno lavorativo del mese, 17:30 |
 
