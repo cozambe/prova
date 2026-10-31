@@ -1,4 +1,4 @@
-<title>Nota Spese PIVA</title>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Nota Spese PIVA</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -34,7 +34,7 @@ button,select,input,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
-.month{display:flex;align-items:center;gap:6px}
+.month{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 .month select{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .iconbtn{width:38px;height:38px;border:1px solid var(--line);border-radius:8px;background:var(--surface);cursor:pointer;font-size:1rem}
 
@@ -80,6 +80,8 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
 .pill.inviata{background:var(--good-soft);color:var(--good)}
 .pill.src{background:var(--sunk);color:var(--muted)}
 .pill.noric{background:var(--bad-soft);color:var(--bad)}
+.pill.int-srl{background:var(--accent-soft);color:var(--ink)}
+.pill.int-personale{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
 
 .empty{padding:28px 16px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
 .empty b{color:var(--ink)}
@@ -131,6 +133,12 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
       <h1>Nota spese</h1>
     </div>
     <div class="month">
+      <select id="int-sel" aria-label="Intestatario">
+        <option value="">Tutti gli intestatari</option>
+        <option value="piva">Partita IVA</option>
+        <option value="srl">Edilmontaggi Srl</option>
+        <option value="personale">Personale</option>
+      </select>
       <button class="iconbtn" id="m-prev" aria-label="Mese precedente">‹</button>
       <select id="m-sel" aria-label="Periodo"></select>
       <button class="iconbtn" id="m-next" aria-label="Mese successivo">›</button>
@@ -207,6 +215,8 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
       <div class="fld"><label for="f-data">Data</label><input type="date" id="f-data" required></div>
       <div class="fld"><label for="f-cat">Categoria</label><select id="f-cat"></select></div>
     </div>
+    <div class="fld"><label for="f-int">Intestatario</label>
+      <select id="f-int"><option value="piva">Partita IVA</option><option value="srl">Edilmontaggi Project Srl</option><option value="personale">Personale</option></select></div>
     <div class="fld"><label for="f-forn">Fornitore</label><input id="f-forn" placeholder="Es. Trenitalia" required></div>
     <div class="fld"><label for="f-descr">Descrizione</label><input id="f-descr" placeholder="Es. Milano–Roma, sopralluogo cantiere"></div>
     <div class="grid2">
@@ -252,6 +262,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
     {id:'consulenze', label:'Commercialista e consulenze', ded:100},
     {id:'altro', label:'Altro', ded:100},
   ];
+  const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', personale:'Personale'};
   const STATI = {da_verificare:'Da verificare', registrata:'Registrata', inviata:'Inviata'};
   const catOf = id => CATS.find(c => c.id === id) || CATS[CATS.length-1];
   const $ = id => document.getElementById(id);
@@ -273,6 +284,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
   function periods(){
     const set = new Set([ym(today())]);
     spese.forEach(s => s.data && set.add(ym(s.data)));
+    /* periodi indipendenti dal filtro intestatario */
     return [...set].sort().reverse();
   }
   const monthName = p => { const [y,m] = p.split('-'); return new Date(+y, +m-1, 1).toLocaleDateString('it-IT',{month:'long',year:'numeric'}); };
@@ -291,7 +303,8 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
     period = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0');
     render();
   }
-  const inPeriod = s => period === 'all' ? true : period[0] === 'Y' ? (s.data||'').startsWith(period.slice(1)) : ym(s.data) === period;
+  const inPeriodOnly = s => period === 'all' ? true : period[0] === 'Y' ? (s.data||'').startsWith(period.slice(1)) : ym(s.data) === period;
+  const inPeriod = s => inPeriodOnly(s) && (!$('int-sel').value || (s.intestatario || 'piva') === $('int-sel').value);
 
   // ---------- render ----------
   function filtered(){
@@ -333,6 +346,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
     const w2 = document.createElement('span'); w2.textContent = [catOf(s.categoria).label, s.descrizione].filter(Boolean).join(' · ');
     who.append(w1, w2);
     const tags = document.createElement('span'); tags.className = 'tags';
+    if (s.intestatario && s.intestatario !== 'piva') tags.append(pill('int-' + s.intestatario, INTEST[s.intestatario]));
     tags.append(pill(s.stato || 'da_verificare', STATI[s.stato] || STATI.da_verificare));
     if (s.fonte === 'email') tags.append(pill('src','da email'));
     if (!s.ricevutaId && !s.emailLink && s.tipo !== 'nessuno') tags.append(pill('noric','senza ricevuta'));
@@ -388,6 +402,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
     $('d-title').textContent = s ? 'Modifica spesa' : 'Nuova spesa';
     $('f-data').value = s?.data || today();
     $('f-cat').value = s?.categoria || 'altro';
+    $('f-int').value = s?.intestatario || ($('int-sel').value || 'piva');
     $('f-forn').value = s?.fornitore || '';
     $('f-descr').value = s?.descrizione || '';
     $('f-tot').value = s ? numStr(s.totale) : '';
@@ -414,7 +429,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
     const fornitore = $('f-forn').value.trim(), totale = parseNum($('f-tot').value);
     if (!fornitore || !totale) { status('err','Inserisci almeno fornitore e totale.'); return; }
     const rec = {
-      data: $('f-data').value || today(), categoria: $('f-cat').value, fornitore,
+      data: $('f-data').value || today(), intestatario: $('f-int').value, categoria: $('f-cat').value, fornitore,
       descrizione: $('f-descr').value.trim(), totale, iva: parseNum($('f-iva').value),
       metodo: $('f-met').value, deducibile: Math.max(0, Math.min(100, parseInt($('f-ded').value,10) || 0)),
       tipo: $('f-tipo').value, stato: $('f-st').value, note: $('f-note').value.trim(),
@@ -512,11 +527,11 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
   $('b-csv').addEventListener('click', async () => {
     const rows = filtered();
     if (!rows.length) { toast('Nessuna spesa da esportare in questa vista'); return; }
-    const head = ['Data','Fornitore','Descrizione','Categoria','Totale','IVA','Imponibile','Deducibile %','Pagamento','Documento','Stato','Fonte','Ricevuta allegata','Note'];
+    const head = ['Data','Intestatario','Fornitore','Descrizione','Categoria','Totale','IVA','Imponibile','Deducibile %','Pagamento','Documento','Stato','Fonte','Ricevuta allegata','Note'];
     const q = v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
     const n = v => (Number(v)||0).toFixed(2).replace('.',',');
     const lines = [head.join(';')].concat(rows.slice().sort((a,b)=>(a.data||'').localeCompare(b.data||'')).map(s => [
-      s.data, s.fornitore, s.descrizione, catOf(s.categoria).label, n(s.totale), n(s.iva), n((+s.totale||0)-(+s.iva||0)),
+      s.data, INTEST[s.intestatario || 'piva'], s.fornitore, s.descrizione, catOf(s.categoria).label, n(s.totale), n(s.iva), n((+s.totale||0)-(+s.iva||0)),
       s.deducibile ?? catOf(s.categoria).ded, s.metodo, s.tipo, STATI[s.stato]||'', s.fonte, (s.ricevutaId||s.emailLink) ? 'sì' : 'no', s.note
     ].map(q).join(';')));
     const csv = '﻿' + lines.join('\r\n');
@@ -534,6 +549,8 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
   $('m-prev').addEventListener('click', () => shiftMonth(-1));
   $('m-next').addEventListener('click', () => shiftMonth(1));
   ['q','f-cat-filter','f-st-filter'].forEach(id => $(id).addEventListener('input', render));
+  try { const v = localStorage.getItem('nsp-int'); if (v !== null) $('int-sel').value = v; } catch {}
+  $('int-sel').addEventListener('change', () => { try { localStorage.setItem('nsp-int', $('int-sel').value); } catch {} render(); });
   CATS.forEach(c => { $('f-cat').add(new Option(c.label, c.id)); $('f-cat-filter').add(new Option(c.label, c.id)); });
   render();
 
@@ -552,3 +569,4 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
   boot();
 })();
 </script>
+</body></html>
