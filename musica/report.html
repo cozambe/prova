@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I miei ascolti</title>
+<style>
+  :root { --sfondo:#faf8f5; --testo:#1f1d1a; --tenue:#6b665e; --barra:#c2410c; --traccia:#ece7df; }
+  @media (prefers-color-scheme: dark) {
+    :root { --sfondo:#171615; --testo:#ece9e4; --tenue:#a19b91; --barra:#fb923c; --traccia:#2a2826; }
+  }
+  body { background:var(--sfondo); color:var(--testo); font:16px/1.5 system-ui, sans-serif;
+         max-width:760px; margin:0 auto; padding:24px 16px; }
+  h1 { margin:0; } .periodo { color:var(--tenue); margin:4px 0 20px; }
+  .kpi { display:flex; gap:12px; margin-bottom:8px; }
+  .kpi div { flex:1; background:var(--traccia); border-radius:10px; padding:12px; color:var(--tenue); }
+  .kpi b { display:block; font-size:28px; color:var(--testo); }
+  section { margin-top:32px; } h2 { margin:0; font-size:20px; }
+  .unita { color:var(--tenue); margin:0 0 8px; font-size:14px; }
+  .riga { display:grid; grid-template-columns:minmax(0,38%) 1fr 48px; gap:10px; align-items:center; margin:4px 0; }
+  .etichetta { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+  .barra { background:var(--traccia); border-radius:4px; height:14px; }
+  .barra span { display:block; height:100%; background:var(--barra); border-radius:4px; }
+  .valore { text-align:right; font-variant-numeric:tabular-nums; font-size:14px; color:var(--tenue); }
+  .nota { background:var(--traccia); padding:12px; border-radius:10px; margin-top:24px; }
+</style>
+</head>
+<body>
+<h1>I miei ascolti</h1>
+<p class="periodo">rilevazioni giornaliere</p>
+<div class="kpi"><div><b>8</b>ascolti</div><div><b>7</b>artisti</div><div><b>0</b>ore</div></div>
+<p class="nota">Statistiche per orario e giorno non ancora disponibili: servono i file dello storico Spotify nella cartella <code>dati/</code>.</p>
+<section><h2>Artisti più ascoltati</h2><p class="unita">ascolti</p><div class="riga"><span class="etichetta">Radiohead</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">2</span></div><div class="riga"><span class="etichetta">Pink Floyd</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Joy Division</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Björk</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Panchiko</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Fontaines D.C.</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Wunderhorse</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div></section><section><h2>Brani più ascoltati</h2><p class="unita">ascolti</p><div class="riga"><span class="etichetta">Wish You Were Here · Pink Floyd</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Transmission - 2020 Digital Remaster · Joy Division</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">You And Whose Army? · Radiohead</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">All Is Full Of Love · Björk</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">All They Wanted · Panchiko</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Street Spirit (Fade Out) · Radiohead</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Marianne · Fontaines D.C.</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Purple · Wunderhorse</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">1</span></div></section><section><h2>Generi</h2><p class="unita">ascolti</p><div class="riga"><span class="etichetta">Post-punk</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">2</span></div><div class="riga"><span class="etichetta">Art rock</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">2</span></div><div class="riga"><span class="etichetta">Indie rock</span><span class="barra"><span style="width:100.0%"></span></span><span class="valore">2</span></div><div class="riga"><span class="etichetta">Rock psichedelico</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div><div class="riga"><span class="etichetta">Elettronica sperimentale</span><span class="barra"><span style="width:50.0%"></span></span><span class="valore">1</span></div></section>
+</body>
+</html>
