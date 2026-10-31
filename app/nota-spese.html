@@ -120,6 +120,22 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
 .status.info{background:var(--accent-soft);color:var(--accent)}
 .status.err{background:var(--bad-soft);color:var(--bad)}
 .status.ok{background:var(--good-soft);color:var(--good)}
+.drawer.wide{width:min(760px,100%)}
+.drawer-b > *{flex-shrink:0}
+.rep-checks{display:flex;flex-direction:column;gap:6px}
+.rep-check{display:flex;gap:8px;align-items:baseline;padding:8px 10px;border-radius:8px;font-size:.88rem}
+.rep-check.warn{background:var(--warn-soft);color:var(--warn)}
+.rep-check.ok{background:var(--good-soft);color:var(--good)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+.tbl th,.tbl td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.tbl th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--bg)}
+.tbl td.n,.tbl th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.tbl td.w{white-space:normal;min-width:160px}
+.tbl tfoot td{font-weight:600;border-bottom:0;background:var(--bg)}
+.tbl tr.zero td{color:var(--bad)}
+.rep-text{width:100%;min-height:170px;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-family:var(--f-mono);font-size:.8rem;line-height:1.5;resize:vertical}
+.rep-h3{font-family:var(--f-display);font-size:1rem;margin:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:30;font-size:.9rem;max-width:calc(100% - 32px)}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -182,8 +198,9 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
       <div class="foot">
         <span class="hint" id="count" style="color:var(--muted);font-size:.85rem"></span>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn small" id="b-close">Chiudi il mese</button>
+          <button class="btn small" id="b-reopen" hidden>Riapri il mese</button>
           <button class="btn small" id="b-csv">Esporta CSV</button>
+          <button class="btn small primary" id="b-report">Report per il commercialista</button>
         </div>
       </div>
     </section>
@@ -242,6 +259,28 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
     <div style="display:flex;gap:8px;margin-left:auto">
       <button class="btn" id="d-cancel" type="button">Annulla</button>
       <button class="btn primary" id="d-save" type="button">Salva</button>
+    </div>
+  </div>
+</aside>
+<div class="scrim" id="r-scrim" hidden></div>
+<aside class="drawer wide" id="report" hidden role="dialog" aria-modal="true" aria-labelledby="r-title">
+  <div class="drawer-h"><div><div class="eyebrow" id="r-sub"></div><h2 id="r-title">Report per il commercialista</h2></div><button class="iconbtn" id="r-x" aria-label="Chiudi">✕</button></div>
+  <div class="drawer-b">
+    <div class="rep-checks" id="r-checks"></div>
+    <h3 class="rep-h3">Riepilogo per categoria</h3>
+    <div class="tbl-wrap"><table class="tbl" id="r-cat"></table></div>
+    <h3 class="rep-h3">Dettaglio spese</h3>
+    <div class="tbl-wrap"><table class="tbl" id="r-det"></table></div>
+    <h3 class="rep-h3">Testo per l’email</h3>
+    <textarea class="rep-text" id="r-text" aria-label="Testo per l’email al commercialista"></textarea>
+    <span class="help" style="font-size:.78rem;color:var(--muted)">Copia il testo nell’email e allega il CSV. Le ricevute sono nell’app (foto) e in Gmail con l’etichetta PIVA-Spese.</span>
+  </div>
+  <div class="drawer-f">
+    <button class="btn" id="r-reopen" type="button" hidden>Riapri il mese</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
+      <button class="btn" id="r-copy" type="button">Copia testo</button>
+      <button class="btn" id="r-csv" type="button">Scarica CSV</button>
+      <button class="btn primary" id="r-close" type="button">Segna come inviato</button>
     </div>
   </div>
 </aside>
@@ -331,8 +370,9 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
         : emptyEl('Ancora nessuna spesa','Fotografa il primo scontrino o aggiungi una spesa a mano. Ogni lunedì Claude importa anche le ricevute trovate in Gmail.'));
     } else rows.forEach(s => list.append(rowEl(s)));
     $('count').textContent = loaded ? `${rows.length} ${rows.length === 1 ? 'spesa' : 'spese'} · ${fmt(rows.reduce((a,s)=>a+(+s.totale||0),0))}` : '';
-    $('b-close').disabled = !/^\d{4}-\d{2}$/.test(period) || !per.some(s => s.stato !== 'inviata');
-    $('b-close').textContent = 'Chiudi il mese';
+    $('b-reopen').hidden = !per.some(s => s.stato === 'inviata');
+    $('b-reopen').textContent = 'Riapri il mese';
+    if (!$('report').hidden) renderReport();
     renderNotes();
   }
   function emptyEl(t, s){ const d = document.createElement('div'); d.className = 'empty'; const b = document.createElement('b'); b.textContent = t; const sp = document.createElement('span'); sp.textContent = s; d.append(b, sp); return d; }
@@ -512,33 +552,111 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     if (['scontrino','fattura','ricevuta'].includes(r.tipo)) $('f-tipo').value = r.tipo;
   }
 
-  // ---------- month close & export ----------
-  $('b-close').addEventListener('click', async () => {
-    const b = $('b-close');
-    const toClose = spese.filter(s => inPeriod(s) && s.stato !== 'inviata');
-    if (!toClose.length || !db) return;
-    if (b.textContent !== 'Conferma: segna ' + toClose.length + ' come inviate') { b.textContent = 'Conferma: segna ' + toClose.length + ' come inviate'; return; }
-    b.disabled = true;
-    try { for (const s of toClose) await db.collection('spese').doc(s.id).update({stato:'inviata', updatedAt:new Date().toISOString()}); toast(monthName(period) + ': spese segnate come inviate'); }
-    catch (e) { toast('Operazione interrotta: ' + (e?.message || 'errore')); }
-    render();
-  });
+  // ---------- month close, reopen & export ----------
+  const scope = () => spese.filter(inPeriod).sort((a,b)=>(a.data||'').localeCompare(b.data||''));
+  const periodLabel = () => (period === 'all' ? 'Tutte le spese' : period[0] === 'Y' ? 'Anno ' + period.slice(1) : monthName(period)) + ' · ' + ($('int-sel').value ? INTEST[$('int-sel').value] : 'tutti gli intestatari');
 
-  $('b-csv').addEventListener('click', async () => {
-    const rows = filtered();
-    if (!rows.length) { toast('Nessuna spesa da esportare in questa vista'); return; }
-    const head = ['Data','Intestatario','Fornitore','Descrizione','Categoria','Totale','IVA','Imponibile','Deducibile %','Pagamento','Documento','Stato','Fonte','Ricevuta allegata','Note'];
+  // Chiude: segna come inviate e ricorda lo stato precedente, così si può riaprire.
+  async function closeMonth(btn){
+    const rows = scope().filter(s => s.stato !== 'inviata');
+    if (!rows.length || !db) return;
+    const label = 'Conferma: segna ' + rows.length + ' come inviate';
+    if (btn.textContent !== label) { btn.textContent = label; return; }
+    btn.disabled = true;
+    const now = new Date().toISOString();
+    try { for (const s of rows) await db.collection('spese').doc(s.id).update({stato:'inviata', statoPrima: s.stato || 'da_verificare', inviataIl: now, updatedAt: now}); toast('Segnate come inviate. Puoi annullare con “Riapri il mese”.'); }
+    catch (e) { toast('Operazione interrotta: ' + (e?.message || 'errore')); }
+    btn.disabled = false; btn.textContent = 'Segna come inviato'; render();
+  }
+  // Riapre: rimette ogni spesa inviata allo stato che aveva prima della chiusura.
+  async function reopenMonth(btn){
+    const rows = scope().filter(s => s.stato === 'inviata');
+    if (!rows.length || !db) return;
+    const label = 'Conferma: riapri ' + rows.length + ' spese';
+    if (btn.textContent !== label) { btn.textContent = label; return; }
+    btn.disabled = true;
+    try { for (const s of rows) await db.collection('spese').doc(s.id).update({stato: s.statoPrima || 'registrata', inviataIl: null, updatedAt: new Date().toISOString()}); toast('Mese riaperto: le spese sono tornate modificabili.'); }
+    catch (e) { toast('Operazione interrotta: ' + (e?.message || 'errore')); }
+    btn.disabled = false; btn.textContent = 'Riapri il mese'; render();
+  }
+  $('b-reopen').addEventListener('click', e => reopenMonth(e.currentTarget));
+  $('r-reopen').addEventListener('click', e => reopenMonth(e.currentTarget));
+  $('r-close').addEventListener('click', e => closeMonth(e.currentTarget));
+
+  function csvOf(rows){
+    const head = ['Data','Intestatario','Fornitore','Descrizione','Categoria','Totale','IVA','Imponibile','Deducibile %','Pagamento','Documento','Stato','Fonte','Ricevuta','Link email','Note'];
     const q = v => { const s = String(v ?? ''); return /[;"\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
     const n = v => (Number(v)||0).toFixed(2).replace('.',',');
-    const lines = [head.join(';')].concat(rows.slice().sort((a,b)=>(a.data||'').localeCompare(b.data||'')).map(s => [
+    const lines = [head.join(';')].concat(rows.map(s => [
       s.data, INTEST[s.intestatario || 'piva'], s.fornitore, s.descrizione, catOf(s.categoria).label, n(s.totale), n(s.iva), n((+s.totale||0)-(+s.iva||0)),
-      s.deducibile ?? catOf(s.categoria).ded, s.metodo, s.tipo, STATI[s.stato]||'', s.fonte, (s.ricevutaId||s.emailLink) ? 'sì' : 'no', s.note
+      s.deducibile ?? catOf(s.categoria).ded, s.metodo, s.tipo, STATI[s.stato]||'', s.fonte, s.ricevutaId ? 'foto in app' : s.emailLink ? 'in Gmail' : 'mancante', s.emailLink || '', s.note
     ].map(q).join(';')));
-    const csv = '﻿' + lines.join('\r\n');
-    const name = 'nota-spese-' + (period === 'all' ? 'tutte' : period.replace('Y','')) + '.csv';
+    const t = rows.reduce((a,s) => a + (+s.totale||0), 0), iv = rows.reduce((a,s) => a + (+s.iva||0), 0);
+    lines.push(['','','TOTALE','','',n(t),n(iv),n(t-iv)].map(q).join(';'));
+    return '﻿' + lines.join('\r\n');
+  }
+  async function saveCsv(rows){
+    if (!rows.length) { toast('Nessuna spesa da esportare in questa vista'); return; }
+    const who = $('int-sel').value ? '-' + $('int-sel').value : '';
+    const name = 'nota-spese-' + (period === 'all' ? 'tutte' : period.replace('Y','')) + who + '.csv';
     if (!downloads) { toast('Download non disponibile in questa vista'); return; }
-    try { await downloads.save({filename:name, data:new Blob([csv],{type:'text/csv'})}); toast('CSV pronto: ' + name); }
+    try { await downloads.save({filename:name, data:new Blob([csvOf(rows)],{type:'text/csv'})}); toast('CSV pronto: ' + name); }
     catch (e) { if (e?.code !== 'declined') toast('Esportazione non riuscita: ' + (e?.message || e?.code)); }
+  }
+  $('b-csv').addEventListener('click', () => saveCsv(filtered().sort((a,b)=>(a.data||'').localeCompare(b.data||''))));
+  $('r-csv').addEventListener('click', () => saveCsv(scope()));
+
+  // ---------- report ----------
+  function cell(tr, text, cls){ const td = document.createElement(tr.parentNode && tr.parentNode.tagName === 'THEAD' ? 'th' : 'td'); td.textContent = text; if (cls) td.className = cls; tr.append(td); return td; }
+  function row(sec, vals, clsList){ const tr = sec.insertRow(); vals.forEach((v,i) => cell(tr, v, clsList[i])); return tr; }
+  function renderReport(){
+    const rows = scope();
+    $('r-sub').textContent = periodLabel();
+    // controlli
+    const ck = $('r-checks'); ck.innerHTML = '';
+    const add = (cls, t) => { const d = document.createElement('div'); d.className = 'rep-check ' + cls; d.textContent = t; ck.append(d); };
+    const zero = rows.filter(s => !(+s.totale)), chk = rows.filter(s => s.stato === 'da_verificare'), noric = rows.filter(s => !s.ricevutaId && !s.emailLink && s.tipo !== 'nessuno');
+    const mixed = !$('int-sel').value && new Set(rows.map(s => s.intestatario || 'piva')).size > 1;
+    if (!rows.length) add('warn', 'Nessuna spesa in questo periodo.');
+    if (mixed) add('warn', 'Il report mescola Partita IVA, Srl e spese personali: scegli un intestatario in alto prima di inviarlo.');
+    if (zero.length) add('warn', zero.length + (zero.length === 1 ? ' spesa senza importo' : ' spese senza importo') + ' (in rosso): inseriscilo dal PDF.');
+    if (chk.length) add('warn', chk.length + ' da verificare.');
+    if (noric.length) add('warn', noric.length + ' senza ricevuta.');
+    if (rows.length && !zero.length && !chk.length && !noric.length && !mixed) add('ok', 'Tutto in ordine: puoi inviare il report.');
+    // per categoria
+    const tc = $('r-cat'); tc.innerHTML = '';
+    row(tc.createTHead(), ['Categoria','N.','Totale','IVA','Imponibile','Deducibile stimato'], ['','n','n','n','n','n']);
+    const bodyC = tc.createTBody(); const by = {};
+    rows.forEach(s => { const k = s.categoria || 'altro'; (by[k] ||= {n:0,t:0,i:0,d:0}); by[k].n++; by[k].t += +s.totale||0; by[k].i += +s.iva||0; by[k].d += (+s.totale||0) * ((s.deducibile ?? catOf(k).ded)/100); });
+    let T = {n:0,t:0,i:0,d:0};
+    CATS.filter(c => by[c.id]).forEach(c => { const v = by[c.id]; row(bodyC, [c.label, String(v.n), fmt(v.t), fmt(v.i), fmt(v.t - v.i), fmt(v.d)], ['','n','n','n','n','n']); T.n += v.n; T.t += v.t; T.i += v.i; T.d += v.d; });
+    row(tc.createTFoot(), ['Totale', String(T.n), fmt(T.t), fmt(T.i), fmt(T.t - T.i), fmt(T.d)], ['','n','n','n','n','n']);
+    // dettaglio
+    const td = $('r-det'); td.innerHTML = '';
+    row(td.createTHead(), ['Data','Fornitore','Descrizione','Totale','IVA','Ricevuta','Stato'], ['','w','w','n','n','','']);
+    const bodyD = td.createTBody();
+    rows.forEach(s => { const tr = row(bodyD, [s.data ? new Date(s.data+'T12:00').toLocaleDateString('it-IT') : '—', s.fornitore || '—', s.descrizione || '', fmt(s.totale), fmt(s.iva), s.ricevutaId ? 'foto' : s.emailLink ? 'Gmail' : 'mancante', STATI[s.stato] || ''], ['','w','w','n','n','','']); if (!(+s.totale)) tr.className = 'zero'; });
+    // testo email
+    const lines = ['Buongiorno,', '', 'in allegato la nota spese di ' + periodLabel().replace(' · ', ' (') + ').', '', 'Riepilogo per categoria:'];
+    CATS.filter(c => by[c.id]).forEach(c => lines.push('- ' + c.label + ': ' + fmt(by[c.id].t) + ' (IVA ' + fmt(by[c.id].i) + ', ' + by[c.id].n + (by[c.id].n === 1 ? ' documento)' : ' documenti)')));
+    lines.push('', 'Totale: ' + fmt(T.t) + ' · IVA ' + fmt(T.i) + ' · imponibile ' + fmt(T.t - T.i));
+    if (zero.length || noric.length) lines.push('', 'Da completare: ' + [zero.length && zero.length + ' importi mancanti', noric.length && noric.length + ' ricevute mancanti'].filter(Boolean).join(', ') + '.');
+    lines.push('', 'Il dettaglio riga per riga è nel file CSV allegato.', '', 'Cordiali saluti', 'Ing. Corrado Zambelli');
+    $('r-text').value = lines.join('\n');
+    const nInv = rows.filter(s => s.stato === 'inviata').length;
+    $('r-close').disabled = !rows.length || nInv === rows.length;
+    if ($('r-close').textContent.indexOf('Conferma') !== 0) $('r-close').textContent = nInv === rows.length && rows.length ? 'Già inviato' : 'Segna come inviato';
+    $('r-reopen').hidden = !nInv;
+  }
+  function openReport(){ $('r-close').textContent = 'Segna come inviato'; $('r-reopen').textContent = 'Riapri il mese'; renderReport(); $('r-scrim').hidden = false; $('report').hidden = false; }
+  function closeReport(){ $('r-scrim').hidden = true; $('report').hidden = true; }
+  $('b-report').addEventListener('click', openReport);
+  $('r-x').addEventListener('click', closeReport); $('r-scrim').addEventListener('click', closeReport);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('report').hidden) closeReport(); });
+  $('r-copy').addEventListener('click', () => {
+    const t = $('r-text');
+    navigator.clipboard?.writeText(t.value).then(() => toast('Testo copiato'), () => { t.focus(); t.select(); toast('Seleziona e copia il testo evidenziato'); });
+    if (!navigator.clipboard) { t.focus(); t.select(); toast('Seleziona e copia il testo evidenziato'); }
   });
 
   // ---------- misc ----------
