@@ -256,7 +256,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
     <div class="grid2">
       <div class="fld"><label for="f-met">Pagamento</label>
         <select id="f-met"><option value="carta">Carta</option><option value="contanti">Contanti</option><option value="bonifico">Bonifico</option><option value="altro">Altro</option></select></div>
-      <div class="fld"><label for="f-ded">Deducibile %</label><input id="f-ded" inputmode="numeric"><span class="help">Indicativa: verifica col commercialista.</span></div>
+      <div class="fld" id="fld-ded"><label for="f-ded">Deducibile %</label><input id="f-ded" inputmode="numeric"><span class="help">Indicativa: verifica col commercialista.</span></div>
     </div>
     <div class="grid2">
       <div class="fld"><label for="f-tipo">Documento</label>
@@ -318,6 +318,11 @@ select.pill option{color:var(--ink);background:var(--surface)}
   ];
   const COMMERCIALISTA = 'mascia@studioagosti.it';
   const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', aler:'ALER', federcasa:'Federcasa Lombardia', personale:'Personale'};
+  // ALER e Federcasa sono rimborsi spese: niente deducibilità.
+  const NODED = ['aler','federcasa'];
+  const hasDed = s => !NODED.includes(s.intestatario);
+  const dedOf = s => hasDed(s) ? (+s.totale||0) * ((s.deducibile ?? catOf(s.categoria).ded)/100) : 0;
+  const dedView = () => !NODED.includes($('int-sel').value);
   const STATI = {da_verificare:'Da verificare', registrata:'Registrata', inviata:'Inviata'};
   const catOf = id => CATS.find(c => c.id === id) || CATS[CATS.length-1];
   const $ = id => document.getElementById(id);
@@ -373,10 +378,10 @@ select.pill option{color:var(--ink);background:var(--surface)}
     const per = spese.filter(inPeriod);
     const tot = per.reduce((a,s) => a + (+s.totale||0), 0);
     const iva = per.reduce((a,s) => a + (+s.iva||0), 0);
-    const ded = per.reduce((a,s) => a + (+s.totale||0) * ((s.deducibile ?? catOf(s.categoria).ded)/100), 0);
+    const ded = per.reduce((a,s) => a + dedOf(s), 0);
     $('s-tot').textContent = loaded ? fmt(tot) : '—';
     $('s-iva').textContent = loaded ? fmt(iva) : '—';
-    $('s-ded').textContent = loaded ? fmt(ded) : '—';
+    $('s-ded').textContent = loaded ? (dedView() ? fmt(ded) : 'non previsto') : '—';
     $('s-chk').textContent = loaded ? String(per.filter(s => s.stato === 'da_verificare').length) : '—';
 
     const list = $('list'); list.innerHTML = '';
@@ -491,6 +496,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
     $('f-iva').value = s ? numStr(s.iva) : '';
     $('f-met').value = s?.metodo || 'carta';
     $('f-ded').value = s?.deducibile ?? catOf(s?.categoria || 'altro').ded;
+    $('fld-ded').hidden = NODED.includes($('f-int').value);
     $('f-tipo').value = s?.tipo || 'scontrino';
     $('f-st').value = s?.stato || 'da_verificare';
     $('f-note').value = s?.note || '';
@@ -503,6 +509,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
   }
   function closeDrawer(){ $('scrim').hidden = true; $('drawer').hidden = true; editing = null; draftRicevuta = null; draftEmail = null; }
   $('f-cat').addEventListener('change', () => { $('f-ded').value = catOf($('f-cat').value).ded; });
+  $('f-int').addEventListener('change', () => { $('fld-ded').hidden = NODED.includes($('f-int').value); });
   $('d-x').addEventListener('click', closeDrawer); $('d-cancel').addEventListener('click', closeDrawer); $('scrim').addEventListener('click', closeDrawer);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('drawer').hidden) closeDrawer(); });
 
@@ -631,7 +638,7 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     const n = v => (Number(v)||0).toFixed(2).replace('.',',');
     const lines = [head.join(';')].concat(rows.map(s => [
       s.data, INTEST[s.intestatario || 'piva'], s.fornitore, s.descrizione, catOf(s.categoria).label, n(s.totale), n(s.iva), n((+s.totale||0)-(+s.iva||0)),
-      s.deducibile ?? catOf(s.categoria).ded, s.metodo, s.tipo, STATI[s.stato]||'', s.fonte, s.ricevutaId ? 'foto in app' : s.emailLink ? 'in Gmail' : 'mancante', s.emailLink || '', s.note
+      hasDed(s) ? (s.deducibile ?? catOf(s.categoria).ded) : '', s.metodo, s.tipo, STATI[s.stato]||'', s.fonte, s.ricevutaId ? 'foto in app' : s.emailLink ? 'in Gmail' : 'mancante', s.emailLink || '', s.note
     ].map(q).join(';')));
     const t = rows.reduce((a,s) => a + (+s.totale||0), 0), iv = rows.reduce((a,s) => a + (+s.iva||0), 0);
     lines.push(['','','TOTALE','','',n(t),n(iv),n(t-iv)].map(q).join(';'));
@@ -687,13 +694,14 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
 
     // riepilogo per categoria
     text('Riepilogo per categoria', M, 12, bold); y -= 18;
-    const cx = {n: 330, t: 420, i: 485, d: W - M};
-    text('CATEGORIA', M, 8, bold, mute); right('N.', cx.n, 8, bold, mute); right('TOTALE', cx.t, 8, bold, mute); right('IVA', cx.i, 8, bold, mute); right('DEDUCIBILE', cx.d, 8, bold, mute); y -= 14; rule();
+    const showD = dedView();
+    const cx = showD ? {n: 330, t: 420, i: 485, d: W - M} : {n: 380, t: 470, i: W - M, d: W - M};
+    text('CATEGORIA', M, 8, bold, mute); right('N.', cx.n, 8, bold, mute); right('TOTALE', cx.t, 8, bold, mute); right('IVA', cx.i, 8, bold, mute); if (showD) right('DEDUCIBILE', cx.d, 8, bold, mute); y -= 14; rule();
     const by = {};
-    rows.forEach(s => { const c = s.categoria || 'altro'; (by[c] ||= {n:0,t:0,i:0,d:0}); by[c].n++; by[c].t += +s.totale||0; by[c].i += +s.iva||0; by[c].d += (+s.totale||0) * ((s.deducibile ?? catOf(c).ded)/100); });
+    rows.forEach(s => { const c = s.categoria || 'altro'; (by[c] ||= {n:0,t:0,i:0,d:0}); by[c].n++; by[c].t += +s.totale||0; by[c].i += +s.iva||0; by[c].d += dedOf(s); });
     let D = 0;
-    CATS.filter(c => by[c.id]).forEach(c => { const v = by[c.id]; D += v.d; need(16); text(c.label, M, 10, font, ink, cx.n - M - 30); right(String(v.n), cx.n); right(euro(v.t), cx.t); right(euro(v.i), cx.i); right(euro(v.d), cx.d); y -= 15; rule(); });
-    text('Totale', M, 10, bold); right(String(rows.length), cx.n, 10, bold); right(euro(T.t), cx.t, 10, bold); right(euro(T.i), cx.i, 10, bold); right(euro(D), cx.d, 10, bold); y -= 30;
+    CATS.filter(c => by[c.id]).forEach(c => { const v = by[c.id]; D += v.d; need(16); text(c.label, M, 10, font, ink, cx.n - M - 30); right(String(v.n), cx.n); right(euro(v.t), cx.t); right(euro(v.i), cx.i); if (showD) right(euro(v.d), cx.d); y -= 15; rule(); });
+    text('Totale', M, 10, bold); right(String(rows.length), cx.n, 10, bold); right(euro(T.t), cx.t, 10, bold); right(euro(T.i), cx.i, 10, bold); if (showD) right(euro(D), cx.d, 10, bold); y -= 30;
 
     // dettaglio
     need(60); text('Dettaglio spese', M, 12, bold); y -= 18;
@@ -775,12 +783,13 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     if (rows.length && !zero.length && !chk.length && !noric.length && !mixed) add('ok', 'Tutto in ordine: puoi inviare il report.');
     // per categoria
     const tc = $('r-cat'); tc.innerHTML = '';
-    row(tc.createTHead(), ['Categoria','N.','Totale','IVA','Imponibile','Deducibile stimato'], ['','n','n','n','n','n']);
+    const showD = dedView(), cut = a => showD ? a : a.slice(0, 5);
+    row(tc.createTHead(), cut(['Categoria','N.','Totale','IVA','Imponibile','Deducibile stimato']), cut(['','n','n','n','n','n']));
     const bodyC = tc.createTBody(); const by = {};
-    rows.forEach(s => { const k = s.categoria || 'altro'; (by[k] ||= {n:0,t:0,i:0,d:0}); by[k].n++; by[k].t += +s.totale||0; by[k].i += +s.iva||0; by[k].d += (+s.totale||0) * ((s.deducibile ?? catOf(k).ded)/100); });
+    rows.forEach(s => { const k = s.categoria || 'altro'; (by[k] ||= {n:0,t:0,i:0,d:0}); by[k].n++; by[k].t += +s.totale||0; by[k].i += +s.iva||0; by[k].d += dedOf(s); });
     let T = {n:0,t:0,i:0,d:0};
-    CATS.filter(c => by[c.id]).forEach(c => { const v = by[c.id]; row(bodyC, [c.label, String(v.n), fmt(v.t), fmt(v.i), fmt(v.t - v.i), fmt(v.d)], ['','n','n','n','n','n']); T.n += v.n; T.t += v.t; T.i += v.i; T.d += v.d; });
-    row(tc.createTFoot(), ['Totale', String(T.n), fmt(T.t), fmt(T.i), fmt(T.t - T.i), fmt(T.d)], ['','n','n','n','n','n']);
+    CATS.filter(c => by[c.id]).forEach(c => { const v = by[c.id]; row(bodyC, cut([c.label, String(v.n), fmt(v.t), fmt(v.i), fmt(v.t - v.i), fmt(v.d)]), cut(['','n','n','n','n','n'])); T.n += v.n; T.t += v.t; T.i += v.i; T.d += v.d; });
+    row(tc.createTFoot(), cut(['Totale', String(T.n), fmt(T.t), fmt(T.i), fmt(T.t - T.i), fmt(T.d)]), cut(['','n','n','n','n','n']));
     // dettaglio
     const td = $('r-det'); td.innerHTML = '';
     row(td.createTHead(), ['Data','Fornitore','Descrizione','Totale','IVA','Ricevuta','Stato'], ['','w','w','n','n','','']);
