@@ -85,6 +85,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
 .pill.int-personale{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
 .pill.int-aler{background:var(--good-soft);color:var(--good)}
 .pill.int-federcasa{background:var(--warn-soft);color:var(--ink)}
+.pill.int-farmacia{background:var(--bad-soft);color:var(--ink)}
 .pill.int-piva{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
 select.pill{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid transparent;cursor:pointer;padding:3px 20px 3px 9px;font-family:inherit;line-height:1.3;
   background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
@@ -166,6 +167,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
         <option value="srl">Edilmontaggi Srl</option>
         <option value="aler">ALER</option>
         <option value="federcasa">Federcasa Lombardia</option>
+        <option value="farmacia">Farmacia comunale</option>
         <option value="personale">Personale</option>
       </select>
       <button class="iconbtn" id="m-prev" aria-label="Mese precedente">‹</button>
@@ -246,7 +248,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
       <div class="fld"><label for="f-cat">Categoria</label><select id="f-cat"></select></div>
     </div>
     <div class="fld"><label for="f-int">Intestatario</label>
-      <select id="f-int"><option value="piva">Partita IVA</option><option value="srl">Edilmontaggi Project Srl</option><option value="aler">ALER</option><option value="federcasa">Federcasa Lombardia</option><option value="personale">Personale</option></select></div>
+      <select id="f-int"><option value="piva">Partita IVA</option><option value="srl">Edilmontaggi Project Srl</option><option value="aler">ALER</option><option value="federcasa">Federcasa Lombardia</option><option value="farmacia">Farmacia comunale</option><option value="personale">Personale</option></select></div>
     <div class="fld"><label for="f-forn">Fornitore</label><input id="f-forn" placeholder="Es. Trenitalia" required></div>
     <div class="fld"><label for="f-descr">Descrizione</label><input id="f-descr" placeholder="Es. Milano–Roma, sopralluogo cantiere"></div>
     <div class="grid2">
@@ -319,7 +321,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
   const COMMERCIALISTA = 'mascia@studioagosti.it';
   // Destinatari della nota spese per intestatario; plurale = si dà del voi.
   const DESTINATARI = {piva: {to: COMMERCIALISTA, voi: false}, federcasa: {to: 'segreteria@federcasalombardia.it, angelo.sala@federcasalombardia.it', voi: true}};
-  const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', aler:'ALER', federcasa:'Federcasa Lombardia', personale:'Personale'};
+  const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', aler:'ALER', federcasa:'Federcasa Lombardia', farmacia:'Farmacia comunale', personale:'Personale'};
   // ALER e Federcasa sono rimborsi spese: niente deducibilità.
   const NODED = ['aler','federcasa'];
   const hasDed = s => !NODED.includes(s.intestatario);
@@ -778,7 +780,7 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     const zero = rows.filter(s => !(+s.totale) && s.stato === 'da_verificare'), chk = rows.filter(s => s.stato === 'da_verificare'), noric = rows.filter(s => !s.ricevutaId && !s.emailLink && s.tipo !== 'nessuno');
     const mixed = !$('int-sel').value && new Set(rows.map(s => s.intestatario || 'piva')).size > 1;
     if (!rows.length) add('warn', 'Nessuna spesa in questo periodo.');
-    if (mixed) add('warn', 'Il report mescola più intestatari (Partita IVA, Srl, ALER, Federcasa, personali): scegli un intestatario in alto prima di inviarlo.');
+    if (mixed) add('warn', 'Il report mescola più intestatari (Partita IVA, Srl, ALER, Federcasa, Farmacia, personali): scegli un intestatario in alto prima di inviarlo.');
     if (zero.length) add('warn', zero.length + (zero.length === 1 ? ' spesa senza importo' : ' spese senza importo') + ' (in rosso): inseriscilo dal PDF.');
     if (chk.length) add('warn', chk.length + ' da verificare.');
     if (noric.length) add('warn', noric.length + ' senza ricevuta.');

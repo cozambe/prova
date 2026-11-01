@@ -16,7 +16,7 @@ Strumenti per gestire la nota spese della partita IVA.
 
 Collezioni nel database dell'artifact:
 
-- `spese`: `data`, `intestatario` (`piva` · `srl` = Edilmontaggi Project Srl · `aler` · `federcasa` = Federcasa Lombardia · `personale`), `fornitore`, `descrizione`, `categoria`, `totale`, `iva`, `metodo`, `deducibile` (%), `tipo`, `stato` (`da_verificare` · `registrata` · `inviata`), `fonte` (`scontrino` · `email` · `manuale`), `note`, `ricevutaId`/`ricevutaUrl` (foto o PDF), `emailId`/`emailLink`/`emailOggetto`, `statoPrima`/`inviataIl` (per riaprire un mese chiuso), `createdAt`, `updatedAt`
+- `spese`: `data`, `intestatario` (`piva` · `srl` = Edilmontaggi Project Srl · `aler` · `federcasa` = Federcasa Lombardia · `farmacia` = Farmacia comunale · `personale`), `fornitore`, `descrizione`, `categoria`, `totale`, `iva`, `metodo`, `deducibile` (%), `tipo`, `stato` (`da_verificare` · `registrata` · `inviata`), `fonte` (`scontrino` · `email` · `manuale`), `note`, `ricevutaId`/`ricevutaUrl` (foto o PDF), `emailId`/`emailLink`/`emailOggetto`, `statoPrima`/`inviataIl` (per riaprire un mese chiuso), `createdAt`, `updatedAt`
 - `note`: `testo`, `scadenza`, `fatta`, `createdAt`
 
 Le percentuali di deducibilità per categoria sono indicative (vitto 75%, auto 20%, telefono 80%): vanno confermate col commercialista e non si applicano al regime forfettario.
