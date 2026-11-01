@@ -83,6 +83,8 @@ header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:spac
 .pill.noric{background:var(--bad-soft);color:var(--bad)}
 .pill.int-srl{background:var(--accent-soft);color:var(--ink)}
 .pill.int-personale{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.pill.int-aler{background:var(--good-soft);color:var(--good)}
+.pill.int-federcasa{background:var(--warn-soft);color:var(--ink)}
 .pill.int-piva{background:var(--bg);color:var(--ink);border:1px solid var(--line)}
 select.pill{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid transparent;cursor:pointer;padding:3px 20px 3px 9px;font-family:inherit;line-height:1.3;
   background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
@@ -162,6 +164,8 @@ select.pill option{color:var(--ink);background:var(--surface)}
         <option value="">Tutti gli intestatari</option>
         <option value="piva">Partita IVA</option>
         <option value="srl">Edilmontaggi Srl</option>
+        <option value="aler">ALER</option>
+        <option value="federcasa">Federcasa Lombardia</option>
         <option value="personale">Personale</option>
       </select>
       <button class="iconbtn" id="m-prev" aria-label="Mese precedente">‹</button>
@@ -242,7 +246,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
       <div class="fld"><label for="f-cat">Categoria</label><select id="f-cat"></select></div>
     </div>
     <div class="fld"><label for="f-int">Intestatario</label>
-      <select id="f-int"><option value="piva">Partita IVA</option><option value="srl">Edilmontaggi Project Srl</option><option value="personale">Personale</option></select></div>
+      <select id="f-int"><option value="piva">Partita IVA</option><option value="srl">Edilmontaggi Project Srl</option><option value="aler">ALER</option><option value="federcasa">Federcasa Lombardia</option><option value="personale">Personale</option></select></div>
     <div class="fld"><label for="f-forn">Fornitore</label><input id="f-forn" placeholder="Es. Trenitalia" required></div>
     <div class="fld"><label for="f-descr">Descrizione</label><input id="f-descr" placeholder="Es. Milano–Roma, sopralluogo cantiere"></div>
     <div class="grid2">
@@ -313,7 +317,7 @@ select.pill option{color:var(--ink);background:var(--surface)}
     {id:'altro', label:'Altro', ded:100},
   ];
   const COMMERCIALISTA = 'mascia@studioagosti.it';
-  const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', personale:'Personale'};
+  const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', aler:'ALER', federcasa:'Federcasa Lombardia', personale:'Personale'};
   const STATI = {da_verificare:'Da verificare', registrata:'Registrata', inviata:'Inviata'};
   const catOf = id => CATS.find(c => c.id === id) || CATS[CATS.length-1];
   const $ = id => document.getElementById(id);
@@ -764,7 +768,7 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     const zero = rows.filter(s => !(+s.totale) && s.stato === 'da_verificare'), chk = rows.filter(s => s.stato === 'da_verificare'), noric = rows.filter(s => !s.ricevutaId && !s.emailLink && s.tipo !== 'nessuno');
     const mixed = !$('int-sel').value && new Set(rows.map(s => s.intestatario || 'piva')).size > 1;
     if (!rows.length) add('warn', 'Nessuna spesa in questo periodo.');
-    if (mixed) add('warn', 'Il report mescola Partita IVA, Srl e spese personali: scegli un intestatario in alto prima di inviarlo.');
+    if (mixed) add('warn', 'Il report mescola più intestatari (Partita IVA, Srl, ALER, Federcasa, personali): scegli un intestatario in alto prima di inviarlo.');
     if (zero.length) add('warn', zero.length + (zero.length === 1 ? ' spesa senza importo' : ' spese senza importo') + ' (in rosso): inseriscilo dal PDF.');
     if (chk.length) add('warn', chk.length + ' da verificare.');
     if (noric.length) add('warn', noric.length + ' senza ricevuta.');
@@ -786,8 +790,8 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     // Testo standard per lo studio (lo stesso usato dalla bozza automatica del 10 del mese).
     const who = $('int-sel').value ? INTEST[$('int-sel').value] : 'Partita IVA';
     const per = period === 'all' ? 'tutte le spese' : period[0] === 'Y' ? 'anno ' + period.slice(1) : monthName(period);
-    const lines = ['A: ' + COMMERCIALISTA, 'Oggetto: Nota spese ' + who + ' – ' + per + ' – Ing. Corrado Zambelli', '',
-      'Buongiorno,', '', 'ti invio la nota spese della mia ' + (who === 'Partita IVA' ? 'partita IVA' : who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
+    const lines = ['A: ' + (who === 'Partita IVA' ? COMMERCIALISTA : '(destinatario da scegliere)'), 'Oggetto: Nota spese ' + who + ' – ' + per + ' – Ing. Corrado Zambelli', '',
+      'Buongiorno,', '', 'ti invio la nota spese ' + (who === 'Partita IVA' ? 'della mia partita IVA' : who === 'Personale' ? 'personale' : 'per ' + who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
     CATS.filter(c => by[c.id]).forEach(c => lines.push('- ' + c.label + ': ' + fmt(by[c.id].t) + ' (IVA ' + fmt(by[c.id].i) + ', ' + by[c.id].n + (by[c.id].n === 1 ? ' documento)' : ' documenti)')));
     lines.push('', 'Totale: ' + fmt(T.t) + ' · IVA ' + fmt(T.i) + ' · imponibile ' + fmt(T.t - T.i));
     if (zero.length || noric.length) lines.push('', 'Da completare: ' + [zero.length && zero.length + ' importi mancanti', noric.length && noric.length + ' ricevute mancanti'].filter(Boolean).join(', ') + '.');
