@@ -317,6 +317,8 @@ select.pill option{color:var(--ink);background:var(--surface)}
     {id:'altro', label:'Altro', ded:100},
   ];
   const COMMERCIALISTA = 'mascia@studioagosti.it';
+  // Destinatari della nota spese per intestatario; plurale = si dà del voi.
+  const DESTINATARI = {piva: {to: COMMERCIALISTA, voi: false}, federcasa: {to: 'segreteria@federcasalombardia.it, angelo.sala@federcasalombardia.it', voi: true}};
   const INTEST = {piva:'Partita IVA', srl:'Edilmontaggi Srl', aler:'ALER', federcasa:'Federcasa Lombardia', personale:'Personale'};
   // ALER e Federcasa sono rimborsi spese: niente deducibilità.
   const NODED = ['aler','federcasa'];
@@ -799,12 +801,13 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     // Testo standard per lo studio (lo stesso usato dalla bozza automatica del 10 del mese).
     const who = $('int-sel').value ? INTEST[$('int-sel').value] : 'Partita IVA';
     const per = period === 'all' ? 'tutte le spese' : period[0] === 'Y' ? 'anno ' + period.slice(1) : monthName(period);
-    const lines = ['A: ' + (who === 'Partita IVA' ? COMMERCIALISTA : '(destinatario da scegliere)'), 'Oggetto: Nota spese ' + who + ' – ' + per + ' – Ing. Corrado Zambelli', '',
-      'Buongiorno,', '', 'ti invio la nota spese ' + (who === 'Partita IVA' ? 'della mia partita IVA' : who === 'Personale' ? 'personale' : 'per ' + who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
+    const dest = DESTINATARI[$('int-sel').value || 'piva'], voi = !!dest?.voi;
+    const lines = ['A: ' + (dest ? dest.to : '(destinatario da scegliere)'), 'Oggetto: Nota spese ' + who + ' – ' + per + ' – Ing. Corrado Zambelli', '',
+      'Buongiorno,', '', (voi ? 'vi invio la nota spese ' : 'ti invio la nota spese ') + (who === 'Partita IVA' ? 'della mia partita IVA' : who === 'Personale' ? 'personale' : 'per ' + who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
     CATS.filter(c => by[c.id]).forEach(c => lines.push('- ' + c.label + ': ' + fmt(by[c.id].t) + ' (IVA ' + fmt(by[c.id].i) + ', ' + by[c.id].n + (by[c.id].n === 1 ? ' documento)' : ' documenti)')));
     lines.push('', 'Totale: ' + fmt(T.t) + ' · IVA ' + fmt(T.i) + ' · imponibile ' + fmt(T.t - T.i));
     if (zero.length || noric.length) lines.push('', 'Da completare: ' + [zero.length && zero.length + ' importi mancanti', noric.length && noric.length + ' ricevute mancanti'].filter(Boolean).join(', ') + '.');
-    lines.push('', 'Nel file CSV allegato trovi il dettaglio riga per riga. Le fatture elettroniche sono nel cassetto fiscale; le altre ricevute sono disponibili su richiesta.',
+    lines.push('', (voi ? 'In allegato trovate' : 'In allegato trovi') + ' il CSV con il dettaglio riga per riga e il PDF con il riepilogo e, in coda, le ricevute e le foto degli scontrini.',
       '', 'Resto a disposizione per qualsiasi chiarimento.', '', 'Cordiali saluti', '', 'Ing. Corrado Zambelli', 'Via Torquato Tasso, 50 – 24121 Bergamo', 'Tel. 335 283574');
     $('r-text').value = lines.join('\n');
     const nInv = rows.filter(s => s.stato === 'inviata').length;
