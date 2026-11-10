@@ -805,7 +805,7 @@ Usa null per i campi che non riesci a leggere. Niente testo fuori dal JSON.`;
     const per = period === 'all' ? 'tutte le spese' : period[0] === 'Y' ? 'anno ' + period.slice(1) : monthName(period);
     const dest = DESTINATARI[$('int-sel').value || 'piva'], voi = !!dest?.voi;
     const lines = ['A: ' + (dest ? dest.to : '(destinatario da scegliere)'), 'Oggetto: Nota spese ' + who + ' – ' + per + ' – Ing. Corrado Zambelli', '',
-      'Buongiorno,', '', (voi ? 'vi invio la nota spese ' : 'ti invio la nota spese ') + (who === 'Partita IVA' ? 'della mia partita IVA' : who === 'Personale' ? 'personale' : 'per ' + who) + ' relativa a ' + per + '.', '', '[Inserisci nota]', '', 'Riepilogo per categoria:'];
+      'Buongiorno,', '', (voi ? 'vi invio la nota spese ' : 'ti invio la nota spese ') + (who === 'Partita IVA' ? 'della mia partita IVA' : who === 'Personale' ? 'personale' : 'per ' + who) + ' relativa a ' + per + '.', '', 'Riepilogo per categoria:'];
     CATS.filter(c => by[c.id]).forEach(c => lines.push('- ' + c.label + ': ' + fmt(by[c.id].t) + ' (IVA ' + fmt(by[c.id].i) + ', ' + by[c.id].n + (by[c.id].n === 1 ? ' documento)' : ' documenti)')));
     lines.push('', 'Totale: ' + fmt(T.t) + ' · IVA ' + fmt(T.i) + ' · imponibile ' + fmt(T.t - T.i));
     if (zero.length || noric.length) lines.push('', 'Da completare: ' + [zero.length && zero.length + ' importi mancanti', noric.length && noric.length + ' ricevute mancanti'].filter(Boolean).join(', ') + '.');
